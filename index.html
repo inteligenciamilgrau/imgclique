@@ -668,7 +668,7 @@
         
         // Try to load texture, fall back to material if failed
         const floorTexture = new THREE.TextureLoader().load(
-          'http://127.0.0.1:5500/xp/3d_game/floor.webp',
+          'https://inteligenciamilgrau.github.io/imgclique/floor.webp',
           undefined, // onLoad callback
           undefined, // onProgress callback
           function(err) { // onError callback
@@ -700,7 +700,7 @@
       
       // Load texture and update material when ready
       new THREE.TextureLoader().load(
-        'http://127.0.0.1:5500/xp/3d_game/wall.webp',
+        'https://inteligenciamilgrau.github.io/imgclique/3d_game/wall.webp',
         function(texture) {
           texture.wrapS = THREE.RepeatWrapping;
           texture.wrapT = THREE.RepeatWrapping;
@@ -915,7 +915,7 @@
 
     // Add at the beginning of your script
     const textureLoader = new THREE.TextureLoader();
-    const redTexture = textureLoader.load('http://127.0.0.1:5500/xp/3d_game/player_red.jpg', (texture) => {
+    const redTexture = textureLoader.load('https://inteligenciamilgrau.github.io/imgclique/player_red.jpg', (texture) => {
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.ClampToEdgeWrapping;
         texture.minFilter = THREE.LinearFilter;
@@ -926,7 +926,7 @@
     }, undefined, (error) => {
         console.error('Error loading red texture:', error);
     });
-    const greenTexture = textureLoader.load('http://127.0.0.1:5500/xp/3d_game/player_green.jpg', (texture) => {
+    const greenTexture = textureLoader.load('https://inteligenciamilgrau.github.io/imgclique/player_green.jpg', (texture) => {
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.ClampToEdgeWrapping;
         texture.minFilter = THREE.LinearFilter;

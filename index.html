@@ -193,9 +193,6 @@
   <button id="left" class="control-button">⇦ Rotate Left</button>
   <button id="right" class="control-button">⇨ Rotate Right</button>
   
-  
-
-  <button id="actionButton">Press and Hold</button>
   <canvas id="mapCanvas" width="200" height="200"></canvas>
   <div id="coordinates">
     <div>Mouse: <span id="mouse-coords">X: 0.00 Y: 0.00 Z: 0.00</span></div>
@@ -990,20 +987,6 @@
 
     //let redObject = createPickableObject('red', new THREE.Vector3(5, 0, 5));
     //let greenObject = createPickableObject('green', new THREE.Vector3(-5, 0, 5));
-
-    let intervalId;
-
-    document.getElementById('actionButton').addEventListener('mousedown', () => {
-      intervalId = setInterval(createObject, 100); // Call createObject every 100ms
-    });
-
-    document.getElementById('actionButton').addEventListener('mouseup', () => {
-      clearInterval(intervalId);
-    });
-
-    document.getElementById('actionButton').addEventListener('mouseleave', () => {
-      clearInterval(intervalId);
-    });
 
 
     function drawMap() {

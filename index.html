@@ -94,17 +94,18 @@
     }
 
     .rules-btn {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        padding: 10px 20px;
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-        z-index: 1000;
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 80px;
+      height: 80px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      z-index: 1000;
     }
 
     .modal {
@@ -1316,8 +1317,19 @@
 
     // Add this event listener for the play again button
     document.getElementById('playAgainButton').addEventListener('click', () => {
-        location.reload();
+      location.reload();
     });
+
+    // Style the Play Again button
+    const playAgainButton = document.getElementById('playAgainButton');
+    playAgainButton.style.width = '100px';
+    playAgainButton.style.height = '100px';
+    playAgainButton.style.backgroundColor = '#4CAF50';
+    playAgainButton.style.color = 'white';
+    playAgainButton.style.border = 'none';
+    playAgainButton.style.borderRadius = '5px';
+    playAgainButton.style.cursor = 'pointer';
+    playAgainButton.style.fontSize = '16px';
 
     const rulesBtn = document.getElementById("rulesBtn");
     const rulesModal = document.getElementById("rulesModal");

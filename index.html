@@ -215,7 +215,7 @@
         <ul class="rules-list">
             <li>🎯 <strong>Objetivo:</strong> Clique em todos os caras verdes evitando os vermelhos</li>
             <li>🖱️ <strong>Movimentação:</strong> Clique com o mouse para mover-se pelo mapa</li>
-            <li>👀 <strong>Visualização:</strong> Use o botão do meio do mouse para arrastar e olhar ao redor</li>
+            <li>👀 <strong>Visualização:</strong> Clique com o botão direito do mouse e arraste para olhar ao redor</li>
             <li>❌ <strong>Game Over:</strong> Tocar em um cara vermelho encerra o jogo</li>
             <li>⭐ <strong>Pontuação:</strong> Cada cara verde clicado vale 10 pontos</li>
             <li>🏆 <strong>Vitória:</strong> Clique em todos os caras verdes para vencer</li>
@@ -391,7 +391,7 @@
 
     // Add these event listeners after your scene setup
     document.addEventListener('mousedown', (event) => {
-        if (event.button === 1) { // Middle mouse button
+        if (event.button === 2) { // Middle mouse button
             event.preventDefault();
             isMiddleMouseDown = true;
             document.body.requestPointerLock();
@@ -399,7 +399,7 @@
     });
 
     document.addEventListener('mouseup', (event) => {
-        if (event.button === 1) {
+        if (event.button === 2) {
             isMiddleMouseDown = false;
             document.exitPointerLock();
         }

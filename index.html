@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Game with Crosshair and Strafe</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #gameCanvas { display: block; }
+
+    /* Crosshair styling */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100px;
+      height: 100px;
+      margin-left: -50px;
+      margin-top: -50px;
+      /*background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><line x1="50" y1="0" x2="50" y2="100" stroke="white" stroke-width="10"/><line x1="0" y1="50" x2="100" y2="50" stroke="white" stroke-width="10"/></svg>') no-repeat center;*/
+      pointer-events: none;
+    }
+
+    #map { position: absolute; top: 10px; left: 10px; width: 200px; height: 200px; background: rgba(255,255,255,0.7); }
+    .control-button {
+      position: absolute;
+      bottom: 10px;
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      opacity: 0.8;
+    }
+    #left { left: 20%; top: 25%; width: 100px; height: 100px;}
+    #right { right: 20%; top: 25%; width: 100px; height: 100px;}
+    #forward { left: 47.5%; top: 30%; width: 100px; height: 100px;}
+    #backward { left: 47.5%; bottom: 20%; width: 100px; height: 100px;}
+    #strafe-left { left: 30%; top: 45%; width: 100px; height: 100px;}
+    #strafe-right { right: 30%; top: 45%; width: 100px; height: 100px;}
+    #pick { left: 47.5%; top: 58%; width: 100px; height: 100px;}
+    #mapCanvas {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      border: 1px solid black;
+    }
+
+    #coordinates {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 14px;
+        border-radius: 5px;
+        z-index: 1000;
+    }
+    .target-coords { color: #90ff90; }
+    .player-coords { color: #90d0ff; }
+
+    #mouse-coords {
+        color: #90ff90;
+    }
+
+    #player-coords {
+        color: #90d0ff;
+    }
+
+    .pickup-text {
+        position: fixed;
+        left: 50%;
+        top: 40%;
+        transform: translate(-50%, -50%);
+        font-size: 32px;
+        font-weight: bold;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .pickup-text.show {
+        animation: fadeUpAndOut 1s ease-out;
+    }
+
+    @keyframes fadeUpAndOut {
+        0% {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -100%);
+        }
+    }
+
+    .rules-btn {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        z-index: 1000;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        z-index: 1001;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        width: 70%;
+        max-width: 600px;
+        border-radius: 5px;
+    }
+
+    .close-btn {
+        position: absolute;
+        right: 10px;
+        top: 5px;
+        font-size: 24px;
+        cursor: pointer;
+        color: #666;
+    }
+
+    .rules-list {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .rules-list li {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f5f5f5;
+        border-radius: 3px;
+    }
+
+    .game-title {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 48px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .back-btn {
+        display: block;
+        margin: 20px auto 10px;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+    }
+
+    .back-btn:hover {
+        background-color: #45a049;
+    }
+  </style>
+  <script src="https://threejs.org/build/three.js"></script>
+</head>
+<body>
+  <div class="game-title">Jogo Clique No Cara de Verde</div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="crosshair"></div>
+  <div id="map">
+    <div id="player"></div>
+  </div>
+  <button id="left" class="control-button">⇦ Rotate Left</button>
+  <button id="right" class="control-button">⇨ Rotate Right</button>
+  
+  
+
+  <button id="actionButton">Press and Hold</button>
+  <canvas id="mapCanvas" width="200" height="200"></canvas>
+  <div id="coordinates">
+    <div>Mouse: <span id="mouse-coords">X: 0.00 Y: 0.00 Z: 0.00</span></div>
+    <div>Player: <span id="player-coords">X: 0.00 Y: 0.00 Z: 0.00</span></div>
+  </div>
+  
+  <!-- Win message -->
+  <div id="winMessage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.8); color:white; text-align:center; padding-top:20%;">
+    <h1>You Win!</h1>
+    <button id="playAgainButton">Play Again</button>
+  </div>
+
+  <button class="rules-btn" id="rulesBtn">REGRAS</button>
+
+  <div id="rulesModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" id="closeBtn">&times;</span>
+        <h2>Como Jogar</h2>
+        <ul class="rules-list">
+            <li>🎯 <strong>Objetivo:</strong> Clique em todos os caras verdes evitando os vermelhos</li>
+            <li>🖱️ <strong>Movimentação:</strong> Clique com o mouse para mover-se pelo mapa</li>
+            <li>👀 <strong>Visualização:</strong> Use o botão do meio do mouse para arrastar e olhar ao redor</li>
+            <li>❌ <strong>Game Over:</strong> Tocar em um cara vermelho encerra o jogo</li>
+            <li>⭐ <strong>Pontuação:</strong> Cada cara verde clicado vale 10 pontos</li>
+            <li>🏆 <strong>Vitória:</strong> Clique em todos os caras verdes para vencer</li>
+        </ul>
+        <button class="back-btn" onclick="rulesModal.style.display='none'">VOLTAR AO JOGO</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Add at the beginning of your code
+    let inventory = {
+        red: 0,
+        green: 0
+    };
+
+    // Add at the top of your code
+    let score = 0;
+    let isGameOver = false;
+    const MAX_RED_PICKUPS = 1; // Game over after 3 red pickups
+
+    // Add score display
+    const scoreDisplay = document.createElement('div');
+    scoreDisplay.style.position = 'fixed';
+    scoreDisplay.style.top = '20px';
+    scoreDisplay.style.left = '20px';
+    scoreDisplay.style.color = 'white';
+    scoreDisplay.style.fontSize = '24px';
+    document.body.appendChild(scoreDisplay);
+
+    //function updateScore() {
+    //    scoreDisplay.textContent = `Score: ${score}`;
+    //    console.log(`Score 1: ${score}`);
+    //}
+
+    function gameOver() {
+      isGameOver = true;
+      const gameOverText = document.createElement('div');
+      gameOverText.id = 'gameOverText'; // Add an ID to easily find it later
+      gameOverText.style.position = 'fixed';
+      gameOverText.style.top = '50%';
+      gameOverText.style.left = '50%';
+      gameOverText.style.transform = 'translate(-50%, -50%)';
+      gameOverText.style.color = 'red';
+      gameOverText.style.fontSize = '48px';
+      gameOverText.textContent = 'GAME OVER';
+      document.body.appendChild(gameOverText);
+      
+      // Show restart button only when game is over
+      restartButton.style.display = 'block';
+    }
+
+    // Add restart button
+    const restartButton = document.createElement('button');
+    restartButton.textContent = 'Restart Game';
+    restartButton.style.position = 'fixed';
+    restartButton.style.top = '60%';
+    restartButton.style.left = '50%';
+    restartButton.style.transform = 'translate(-50%, -50%)';
+    restartButton.style.padding = '10px 20px';
+    restartButton.style.fontSize = '24px';
+    restartButton.style.display = 'none'; // Hide by default
+    restartButton.style.cursor = 'pointer';
+    document.body.appendChild(restartButton);
+
+    restartButton.addEventListener('click', () => {
+      isGameOver = false;
+      inventory.red = 0;
+      inventory.green = 0;
+      score = 0;
+      const gameOverText = document.getElementById('gameOverText');
+      if (gameOverText) {
+      gameOverText.remove(); // Remove game over text
+      }
+      restartButton.style.display = 'none'; // Hide button after restart
+      restartGame();
+      updateInventoryDisplay();
+    });
+
+    // Add HTML elements for inventory display
+    const inventoryDisplay = document.createElement('div');
+    inventoryDisplay.style.position = 'fixed';
+    inventoryDisplay.style.top = '220px';
+    inventoryDisplay.style.left = '20px';
+    inventoryDisplay.style.color = 'white';
+    document.body.appendChild(inventoryDisplay);
+
+    // Update inventory display
+    function updateInventoryDisplay() {
+        inventoryDisplay.textContent = `Inventory: Red: ${inventory.red} | Green: ${inventory.green}`;
+    }
+
+    // Add these constants at the top of your script
+    const PICKUP_SIZE = 1.5; // Standard size for all pickup objects
+    const PICKUP_GEOMETRY = new THREE.BoxGeometry(PICKUP_SIZE, PICKUP_SIZE, PICKUP_SIZE);
+
+    // Create materials (define once and reuse)
+    const greenMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+    const redMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+
+    // Create edge geometry and material for borders
+    const borderMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+
+    // Function to add borders to a mesh
+    function addBorders(mesh) {
+        const edges = new THREE.EdgesGeometry(mesh.geometry);
+        const borderLines = new THREE.LineSegments(edges, borderMaterial);
+        mesh.add(borderLines);
+    }
+
+    // Apply borders to existing pickups
+    function createPickupWithBorders(material) {
+        const pickup = new THREE.Mesh(PICKUP_GEOMETRY, material);
+        addBorders(pickup);
+        return pickup;
+    }
+
+    // When creating pickups, use this instead:
+    const greenPickup = createPickupWithBorders(greenMaterial);
+    const redPickup = createPickupWithBorders(redMaterial);
+
+    // Initialize scene, camera, and renderer
+    const scene = new THREE.Scene();
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas') });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    // Create player (first person view)
+    const player = new THREE.Object3D();
+    player.position.set(-10, 0, -10); // Set starting point to a free space
+    scene.add(player);
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 0); // Adjust height for first person perspective
+    player.add(camera);
+    rotatePlayer(-90); // Initial rotation
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(0, 10, 0);
+    scene.add(directionalLight);
+
+    // Variables
+    const objects = [];
+    const walls = [];
+    let pickedObjects = 0;
+    const totalGreenObjects = 4;
+    
+    const redObjects = [];
+    const greenObjects = [];
+    const totalRedObjects = 4;
+
+    createRooms();
+    updateInventoryDisplay();
+    //placeObjects();
+
+    // Add this after your scene setup
+    const raycaster = new THREE.Raycaster();
+    const clickMouse = new THREE.Vector2();
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    let isMoving = false;
+    let targetPosition = null;
+    const moveSpeed = 0.1;
+
+    // Add these variables at the top of your script
+    let isMiddleMouseDown = false;
+    let isPointerLocked = false;
+    const mouseSensitivity = 0.002;
+    let invertMouseX = true; // Controls left/right inversion
+    let invertMouseY = false; // Controls up/down inversion
+
+    // Add these event listeners after your scene setup
+    document.addEventListener('mousedown', (event) => {
+        if (event.button === 1) { // Middle mouse button
+            event.preventDefault();
+            isMiddleMouseDown = true;
+            document.body.requestPointerLock();
+        }
+    });
+
+    document.addEventListener('mouseup', (event) => {
+        if (event.button === 1) {
+            isMiddleMouseDown = false;
+            document.exitPointerLock();
+        }
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+        isPointerLocked = document.pointerLockElement === document.body;
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (isMiddleMouseDown && isPointerLocked) {
+            // Apply inversion to horizontal rotation
+            const rotationX = event.movementX * mouseSensitivity * (invertMouseX ? -1 : 1);
+            player.rotation.y -= rotationX;
+
+            // Apply inversion to vertical rotation
+            const rotationY = event.movementY * mouseSensitivity * (invertMouseY ? -1 : 1);
+            camera.rotation.x = Math.max(
+                -Math.PI / 2,
+                Math.min(
+                    Math.PI / 2,
+                    camera.rotation.x + rotationY
+                )
+            );
+        }
+    });
+
+    // Add this CSS to prevent text selection while dragging
+    document.body.style.userSelect = 'none';
+
+    // Update the click event listener
+    renderer.domElement.addEventListener('click', (event) => {
+        // Calculate mouse position in normalized device coordinates
+        clickMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        clickMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // Check if a green object is picked
+        // Assuming you have a function to detect picked objects
+        const pickedObject = detectPickedObject();
+        if (pickedObject && pickedObject.color === 'green') {
+            inventory.green++;
+            checkWinCondition();
+        }
+        
+        // Update raycaster
+        raycaster.setFromCamera(clickMouse, camera);
+        
+        // Calculate intersection with floor plane
+        const intersectionPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, intersectionPoint)) {
+            // Preserve player's current height
+            const playerHeight = camera.position.y;
+            targetPosition = new THREE.Vector3(
+                intersectionPoint.x,
+                playerHeight, // Keep original height
+                intersectionPoint.z
+            );
+            
+            // Log coordinates
+            console.log('Clicked position:', {
+                x: intersectionPoint.x.toFixed(2),
+                y: intersectionPoint.y.toFixed(2),
+                z: intersectionPoint.z.toFixed(2)
+            });
+            console.log('Moving to:', {
+                x: targetPosition.x.toFixed(2),
+                y: targetPosition.y.toFixed(2),
+                z: targetPosition.z.toFixed(2)
+            });
+            
+            isMoving = true;
+        }
+    });
+
+    // Dummy function to detect picked objects
+    function detectPickedObject() {
+        // Implement your object detection logic here
+        return null;
+    }
+
+    const coordsDisplay = document.getElementById('coordinates');
+
+  
+
+    //const targetCoordsSpan = document.querySelector('.target-coords');
+    const playerCoordsSpan = document.getElementById('player-coords');
+
+    function updateCoordinatesDisplay() {
+        try {
+            // Check if element exists
+            if (!playerCoordsSpan) {
+                console.warn("playerCoordsSpan element not found");
+                return;
+            }
+
+            // Update player position with safety check
+            if (camera && camera.position) {
+                playerCoordsSpan.textContent = 
+                    `X: ${camera.position.x.toFixed(2)} Y: ${camera.position.y.toFixed(2)} Z: ${camera.position.z.toFixed(2)}`;
+            }
+        } catch (error) {
+            console.error("Error updating coordinates display:", error);
+        }
+    }
+
+    // Remove previous event listeners and add this single implementation
+    const mouseCoords = document.getElementById('mouse-coords');
+    const playerCoords = document.getElementById('player-coords');
+
+    // Single mousemove event listener
+    renderer.domElement.addEventListener('mousemove', (event) => {
+        clickMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        clickMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        raycaster.setFromCamera(clickMouse, camera);
+        
+        const intersectionPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, intersectionPoint)) {
+            mouseCoords.textContent = 
+                `X: ${intersectionPoint.x.toFixed(2)} Y: ${intersectionPoint.y.toFixed(2)} Z: ${intersectionPoint.z.toFixed(2)}`;
+        }
+        
+        // Update player position in same event
+        if (playerCoords && player) {
+            playerCoords.textContent = 
+                `X: ${player.position.x.toFixed(2)} Y: ${player.position.y.toFixed(2)} Z: ${player.position.z.toFixed(2)}`;
+        }
+    });
+
+    // Movement controls
+    //document.getElementById('forward').addEventListener('click', () => movePlayer(-1));
+    //document.getElementById('backward').addEventListener('click', () => movePlayer(1));
+    document.getElementById('left').addEventListener('click', () => rotatePlayer(45));
+    document.getElementById('right').addEventListener('click', () => rotatePlayer(-45));
+    //document.getElementById('strafe-left').addEventListener('click', () => strafePlayer(-0.5));
+    //document.getElementById('strafe-right').addEventListener('click', () => strafePlayer(0.5));
+
+
+    document.addEventListener('keydown', (event) => {
+        // Existing movement code...
+        
+        // Add this after position changes
+        updateCoordinatesDisplay();
+    });
+
+    function movePlayer(direction) {
+      if (!player) {
+        console.warn("Player not initialized");
+        return;
+    }
+
+    const speed = 1 * direction;
+    const dx = Math.sin(player.rotation.y) * speed;
+    const dz = Math.cos(player.rotation.y) * speed;
+    const proposedPosition = new THREE.Vector3(player.position.x + dx, player.position.y, player.position.z + dz);
+
+    if (!checkCollision(proposedPosition)) {
+        player.position.x += dx;
+        player.position.z += dz;
+        //console.log(`Player Position: x=${player.position.x}, y=${player.position.z}`);
+    }
+
+    //console.log(`Player position: X:${player.position.x.toFixed(2)} Y:${player.position.y.toFixed(2)} Z:${player.position.z.toFixed(2)}`);
+    
+    // Update display
+    if (playerCoords) {
+        playerCoords.textContent = 
+            `X:${player.position.x.toFixed(2)} Y:${player.position.y.toFixed(2)} Z:${player.position.z.toFixed(2)}`;
+    }
+    
+    // Alternative: use existing update function
+    updateCoordinatesDisplay();
+    }
+
+    function strafePlayer(direction) {
+      const speed = 1 * direction;
+      const dx = Math.cos(player.rotation.y) * speed;
+      const dz = -Math.sin(player.rotation.y) * speed;
+      const proposedPosition = new THREE.Vector3(player.position.x + dx, player.position.y, player.position.z + dz);
+
+      if (!checkCollision(proposedPosition)) {
+        player.position.x += dx;
+        player.position.z += dz;
+        //console.log(`Player Position: x=${player.position.x}, y=${player.position.z}`);
+      }
+    }
+
+    function rotatePlayer(angle) {
+      const radians = THREE.MathUtils.degToRad(angle);
+      player.rotation.y += radians;
+      //console.log(`Player Rotation: y=${player.rotation.y} radians (${THREE.MathUtils.radToDeg(player.rotation.y)} degrees)`);
+    }
+
+    function updateScore() {
+      const scoreElement = document.getElementById('score');
+      scoreElement.textContent = `Score: ${score}`;
+      console.log(`Score 2: ${score}`);
+    }
+
+
+    function restartGame() {
+      // Stop any ongoing movement
+      isMoving = false;
+      targetPosition = null;
+
+      // Reset player position
+      player.position.set(-10, 0, -10);
+      player.rotation.set(0, -Math.PI / 2, 0);
+      pickedObjects = 0;
+      updateScore();
+
+      // Recreate objects
+      objects.forEach(object => scene.remove(object));
+      redObjects.forEach(object => scene.remove(object));
+      objects.length = 0;
+      redObjects.length = 0;
+      console.log('ok:');
+      placeObjects();
+    }
+
+    function checkCollision(position) {
+      // Create a bounding box at the proposed position
+      const playerBox = new THREE.Box3().setFromCenterAndSize(
+        position,
+        new THREE.Vector3(1, 2, 1) // Assuming player size (width, height, depth)
+      );
+
+      // Check collision with walls
+      for (let wall of walls) {
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        if (playerBox.intersectsBox(wallBox)) {
+          return true;
+        }
+      }
+
+      // Check collision with objects
+      for (let object of objects) {
+        const objectBox = new THREE.Box3().setFromObject(object);
+        if (playerBox.intersectsBox(objectBox)) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function createRooms() {
+      const roomSize = 20;
+      const wallThickness = 1;
+      const wallHeight = 5;
+
+      // Positions for rooms
+      const roomPositions = [
+        { x: -roomSize / 2, z: -roomSize / 2 }, // Room 0
+        { x: roomSize / 2, z: -roomSize / 2 },  // Room 1
+        { x: -roomSize / 2, z: roomSize / 2 },  // Room 2
+        { x: roomSize / 2, z: roomSize / 2 }    // Room 3
+      ];
+
+      // Create floors and walls for each room
+      roomPositions.forEach((pos, index) => {
+        // Floor
+        const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
+        
+        // Try to load texture, fall back to material if failed
+        const floorTexture = new THREE.TextureLoader().load(
+          'http://127.0.0.1:5500/xp/3d_game/floor.webp',
+          undefined, // onLoad callback
+          undefined, // onProgress callback
+          function(err) { // onError callback
+        console.log('Error loading floor texture, using default material');
+        floor.material = new THREE.MeshStandardMaterial({ 
+          color: 0xCCCCCC,
+          roughness: 0.8,
+          metalness: 0.2
+        });
+          }
+        );
+        
+        const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(pos.x, 0, pos.z);
+        scene.add(floor);
+
+        // Walls
+        createRoomWalls(pos.x, pos.z, roomSize, wallThickness, wallHeight, index);
+      });
+    }
+
+    function createRoomWalls(x, z, size, thickness, height, roomIndex) {
+      const halfSize = size / 2;
+      // Try to load texture, fall back to standard material if loading fails
+      // Initialize default material first
+      let wallMaterial = new THREE.MeshStandardMaterial({ color: 0xCCCCCC });
+      
+      // Load texture and update material when ready
+      new THREE.TextureLoader().load(
+        'http://127.0.0.1:5500/xp/3d_game/wall.webp',
+        function(texture) {
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(1, 1);
+          wallMaterial.map = texture;
+          wallMaterial.needsUpdate = true;
+        },
+        undefined,
+        function(err) {
+          console.log('Error loading wall texture, using default material');
+        }
+      );
+      // Create a temporary material while texture is loading
+      //wallMaterial = new THREE.MeshStandardMaterial({ color: 0xCCCCCC });
+      
+      // Set default color in case texture fails to load
+      //wallMaterial.color.setHex(0x999999);
+
+
+      // Door configurations between rooms
+      const doors = {
+        // roomIndex: { north, east, south, west }
+        0: { north: false, east: true, south: true, west: false },
+        1: { north: false, east: false, south: true, west: true },
+        2: { north: true, east: true, south: false, west: false },
+        3: { north: true, east: false, south: false, west: true },
+      };
+
+      // Walls data
+      const wallsData = [
+        // North Wall
+        { pos: { x: x, y: height / 2, z: z - halfSize }, size: [size, height, thickness], rotationY: 0, hasDoor: doors[roomIndex].north },
+        // East Wall
+        { pos: { x: x + halfSize, y: height / 2, z: z }, size: [size, height, thickness], rotationY: Math.PI / 2, hasDoor: doors[roomIndex].east },
+        // South Wall
+        { pos: { x: x, y: height / 2, z: z + halfSize }, size: [size, height, thickness], rotationY: 0, hasDoor: doors[roomIndex].south },
+        // West Wall
+        { pos: { x: x - halfSize, y: height / 2, z: z }, size: [size, height, thickness], rotationY: Math.PI / 2, hasDoor: doors[roomIndex].west },
+      ];
+
+      wallsData.forEach((data) => {
+        if (data.hasDoor) {
+          // Create wall with door by splitting wall into two parts
+          const doorWidth = 20;//4;
+          const wallWidth = data.size[0];
+          const leftWallWidth = (wallWidth - doorWidth) / 2;
+
+          // Left wall
+          const leftWallGeometry = new THREE.BoxGeometry(leftWallWidth, data.size[1], thickness);
+          const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+          leftWall.rotation.y = data.rotationY;
+
+          // Right wall
+          const rightWallGeometry = new THREE.BoxGeometry(leftWallWidth, data.size[1], thickness);
+          const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+          rightWall.rotation.y = data.rotationY;
+
+          // Positioning
+          if (data.rotationY === 0) { // North or South wall
+            leftWall.position.set(data.pos.x - (doorWidth / 2 + leftWallWidth / 2), data.pos.y, data.pos.z);
+            rightWall.position.set(data.pos.x + (doorWidth / 2 + leftWallWidth / 2), data.pos.y, data.pos.z);
+          } else { // East or West wall
+            leftWall.position.set(data.pos.x, data.pos.y, data.pos.z - (doorWidth / 2 + leftWallWidth / 2));
+            rightWall.position.set(data.pos.x, data.pos.y, data.pos.z + (doorWidth / 2 + leftWallWidth / 2));
+          }
+
+          scene.add(leftWall);
+          scene.add(rightWall);
+          walls.push(leftWall, rightWall);
+        } else {
+          // Full wall without door
+          const wallGeometry = new THREE.BoxGeometry(data.size[0], data.size[1], thickness);
+          const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+          wall.rotation.y = data.rotationY;
+          wall.position.set(data.pos.x, data.pos.y, data.pos.z);
+          scene.add(wall);
+          walls.push(wall);
+        }
+      });
+    }
+
+    function placeObjects() {
+      // Place green objects
+      for (let i = 0; i < totalGreenObjects; i++) {
+        let validPosition = false;
+        let position;
+        
+        // Keep trying until we find a valid position
+        while (!validPosition) {
+          position = new THREE.Vector3(
+        Math.random() * 20 - 10,
+        0,
+        Math.random() * 20 - 10
+          );
+          
+          // Create a temporary box to check collisions
+          const testBox = new THREE.Box3().setFromCenterAndSize(
+        position,
+        new THREE.Vector3(1, 1, 1)
+          );
+          
+          // Check collision with walls and existing objects
+          let hasCollision = false;
+          
+          // Check walls
+          for (let wall of walls) {
+        const wallBox = new THREE.Box3().setFromObject(wall);
+        if (testBox.intersectsBox(wallBox)) {
+          hasCollision = true;
+          break;
+        }
+          }
+          
+          // Check existing green objects
+          for (let obj of objects) {
+        const objBox = new THREE.Box3().setFromObject(obj);
+        if (testBox.intersectsBox(objBox)) {
+          hasCollision = true;
+          break;
+        }
+          }
+          
+          if (!hasCollision) {
+        validPosition = true;
+          }
+        }
+        
+        let greenObject = createPickableObject('green', position);
+        //greenObject.position.y = 0; // Set the height to 1 unit above the ground
+        scene.add(greenObject);
+        objects.push(greenObject);
+      }
+      
+      // Create thicker border material
+      const thickBorderMaterial = new THREE.LineBasicMaterial({ 
+        color: 0x000000,
+        //linewidth: 25 // Increase line thickness (note: may not work in all browsers)
+      });
+
+      // Add thicker borders to existing green objects
+      objects.forEach(object => {
+        const edges = new THREE.EdgesGeometry(object.geometry, 30); // Add threshold angle for sharper edges
+        const borderLines = new THREE.LineSegments(edges, thickBorderMaterial);
+        object.add(borderLines);
+      });
+
+      
+      
+      // Place red objects
+      for (let i = 0; i < totalRedObjects; i++) {
+        let validPosition = false;
+        let position;
+        
+        while (!validPosition) {
+          position = new THREE.Vector3(
+            Math.random() * 20 - 10,
+            0,
+            Math.random() * 20 - 10
+          );
+          
+          const testBox = new THREE.Box3().setFromCenterAndSize(
+            position,
+            new THREE.Vector3(1, 1, 1)
+          );
+          
+          let hasCollision = false;
+          
+          // Check walls
+          for (let wall of walls) {
+            const wallBox = new THREE.Box3().setFromObject(wall);
+            if (testBox.intersectsBox(wallBox)) {
+              hasCollision = true;
+              break;
+            }
+          }
+          
+          // Check existing green objects
+          for (let obj of objects) {
+            const objBox = new THREE.Box3().setFromObject(obj);
+            if (testBox.intersectsBox(objBox)) {
+              hasCollision = true;
+              break;
+            }
+          }
+          
+          // Check existing red objects
+          for (let obj of redObjects) {
+            const objBox = new THREE.Box3().setFromObject(obj);
+            if (testBox.intersectsBox(objBox)) {
+              hasCollision = true;
+              break;
+            }
+          }
+          
+          if (!hasCollision) {
+            validPosition = true;
+          }
+        }
+        
+        let redObject = createPickableObject('red', position);
+        scene.add(redObject);
+        redObjects.push(redObject);
+
+        // Add thicker borders to existing red objects
+        redObjects.forEach(object => {
+          const edges = new THREE.EdgesGeometry(object.geometry, 30); // Add threshold angle for sharper edges
+          const borderLines = new THREE.LineSegments(edges, thickBorderMaterial);
+          object.add(borderLines);
+        });
+      }
+    }
+
+    // Add at the beginning of your script
+    const textureLoader = new THREE.TextureLoader();
+    const redTexture = textureLoader.load('http://127.0.0.1:5500/xp/3d_game/player_red.jpg', (texture) => {
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
+        texture.needsUpdate = true;
+    }, undefined, (error) => {
+        console.error('Error loading red texture:', error);
+    });
+    const greenTexture = textureLoader.load('http://127.0.0.1:5500/xp/3d_game/player_green.jpg', (texture) => {
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
+        texture.needsUpdate = true;
+    }, undefined, (error) => {
+        console.error('Error loading green texture:', error);
+    });
+
+    // Both textures need proper encoding
+    redTexture.encoding = THREE.sRGBEncoding;
+    //greenTexture.encoding = THREE.sRGBEncoding;
+
+    // Modify the createPickableObject function
+    function createPickableObject(type, position) {
+        // Create geometry
+        const geometry = new THREE.BoxGeometry(1, 3, 1);
+        
+        
+
+        let material;
+        if (type === 'red') {
+            material = new THREE.MeshBasicMaterial({
+                map: redTexture,
+                color: 0xFFFFFF
+            });
+            
+            // Reset texture transformations
+            redTexture.wrapS = THREE.ClampToEdgeWrapping;
+            redTexture.wrapT = THREE.ClampToEdgeWrapping;
+            redTexture.repeat.set(1, 1);
+            redTexture.center.set(0.5, 0.5);
+            redTexture.offset.set(0, 0);
+        } else if (type === 'green') {
+            material = new THREE.MeshBasicMaterial({
+                map: greenTexture,
+                color: 0xFFFFFF
+            });
+            
+            // Apply same settings to green texture
+            greenTexture.wrapS = THREE.ClampToEdgeWrapping;
+            greenTexture.wrapT = THREE.ClampToEdgeWrapping;
+            greenTexture.repeat.set(1, 1);
+            greenTexture.center.set(0.5, 0.5);
+            greenTexture.offset.set(0, 0);
+        }
+
+        const object = new THREE.Mesh(geometry, material);
+        object.position.copy(position);
+        
+        // Add user data for type identification
+        object.userData.type = type;
+        
+        // Add to scene
+        scene.add(object);
+        
+        return object;
+    }
+
+    //let redObject = createPickableObject('red', new THREE.Vector3(5, 0, 5));
+    //let greenObject = createPickableObject('green', new THREE.Vector3(-5, 0, 5));
+
+    let intervalId;
+
+    document.getElementById('actionButton').addEventListener('mousedown', () => {
+      intervalId = setInterval(createObject, 100); // Call createObject every 100ms
+    });
+
+    document.getElementById('actionButton').addEventListener('mouseup', () => {
+      clearInterval(intervalId);
+    });
+
+    document.getElementById('actionButton').addEventListener('mouseleave', () => {
+      clearInterval(intervalId);
+    });
+
+
+    function drawMap() {
+      const canvas = document.getElementById('mapCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw walls (example)
+      ctx.fillStyle = 'black';
+      //ctx.fillRect(0, 100, 45, 10);
+      //ctx.fillRect(65, 100, 80, 10);
+      //ctx.fillRect(165, 100, 40, 10);
+
+      //ctx.fillRect(100, 0, 10, 45);
+      //ctx.fillRect(100, 65, 10, 80);
+      //ctx.fillRect(100, 165, 10, 40);
+
+      //ctx.fillRect(10, 180, 180, 10); // Bottom wall
+      //ctx.fillRect(10, 10, 10, 180); // Left wall
+      //ctx.fillRect(180, 10, 10, 180); // Right wall
+
+    // Draw objects
+    ctx.fillStyle = 'green';
+    objects.forEach(object => {
+      const x = 100 + (object.position.x) * 5; // Adjust scaling and positioning
+      const y = 100 + (object.position.z) * 5;
+      ctx.fillRect(x, y, 10, 10);
+    });
+
+    // Draw player direction
+    ctx.fillStyle = 'blue';
+    const playerX = 100 + (player.position.x) * 5;
+    const playerY = 100 + (player.position.z) * 5;
+    ctx.fillRect(playerX, playerY, 10, 10);
+
+    // Draw player direction indicator
+    ctx.fillStyle = 'yellow';
+    const directionX = playerX - Math.sin(player.rotation.y) * 10;
+    const directionY = playerY - Math.cos(player.rotation.y) * 10;
+    ctx.beginPath();
+    ctx.moveTo(playerX + 5, playerY + 5); // Center of the player square
+    ctx.lineTo(directionX + 5, directionY + 5);
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = 'red';
+    redObjects.forEach(object => {
+      const x = 100 + (object.position.x) * 5; // Adjust scaling and positioning
+      const y = 100 + (object.position.z) * 5;
+      ctx.fillRect(x, y, 10, 10);
+    });
+
+    }
+
+    // Make sure this is in your animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      updateCoordinatesDisplay(); // Update every frame
+      moveToTarget();
+      renderer.render(scene, camera);
+      drawMap();
+      // Update player coordinates
+      if (playerCoords) {
+        playerCoords.textContent = 
+            `X: ${player.position.x.toFixed(2)} Y:${player.position.y.toFixed(2)} Z:${player.position.z.toFixed(2)}`;
+    }
+    }
+    animate();
+
+    // Update moveToTarget function for smoother movement
+    let playerColliding = false;
+    // Add at the top with other state variables
+    let isColliding = false;
+
+    function createPickupEffect(position, color) {
+        const particleCount = 10;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        
+        // Create particles in a circular pattern
+        for(let i = 0; i < particleCount * 3; i += 3) {
+            const angle = (i / 3) * (Math.PI * 2) / particleCount;
+            positions[i] = position.x + Math.cos(angle) * 0.5;
+            positions[i + 1] = position.y;
+            positions[i + 2] = position.z + Math.sin(angle) * 0.5;
+        }
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const material = new THREE.PointsMaterial({
+            color: color,
+            size: 0.2,
+            transparent: true,
+            opacity: 1
+        });
+        
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+        
+        // Animate particles
+        const startTime = Date.now();
+        const duration = 1000; // 1 second
+        
+        function animateParticles() {
+            const elapsedTime = Date.now() - startTime;
+            const progress = elapsedTime / duration;
+            
+            if (progress < 1) {
+                particles.position.y += 0.02;
+                material.opacity = 1 - progress;
+                requestAnimationFrame(animateParticles);
+            } else {
+                scene.remove(particles);
+                geometry.dispose();
+                material.dispose();
+            }
+        }
+        
+        animateParticles();
+    }
+
+    // Add this function to debug object positions
+    function debugPosition(obj1, obj2) {
+        console.log(`Distance: ${obj1.distanceTo(obj2)}`);
+        console.log(`Player pos: ${obj1.x}, ${obj1.z}`);
+        console.log(`Object pos: ${obj2.x}, ${obj2.z}`);
+    }
+
+    let playerPosition = { x: 0, y: 0 };
+
+    function updatePlayerPosition() {
+      //console.log('Player Position:', playerPosition);
+      const player = document.getElementById('player');
+      player.style.left = playerPosition.x + 'px';
+      player.style.top = playerPosition.y + 'px';
+    }
+    
+    // Initial position update
+    updatePlayerPosition();
+
+    // Add a score element to the HTML
+    document.body.insertAdjacentHTML('beforeend', '<div id="score" style="position: absolute; top: 10px; right: 10px; font-size: 24px; color: white;">Score: 0</div>');
+
+    // Initial setup
+    placeObjects();
+    updateScore();
+
+    // Add a game message element to the HTML
+    document.body.insertAdjacentHTML('beforeend', '<div id="gameMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; color: white; display: none;"></div>');
+
+    // First, let's make sure objects are properly tagged
+    function initObjects() {
+        // Create and tag red object
+        const redGeometry = new THREE.BoxGeometry(1, 2, 1);
+        const redMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        redObject = new THREE.Mesh(redGeometry, redMaterial);
+        redObject.position.set(Math.random() * 20 - 10, 0.5, Math.random() * 20 - 10);
+        redObject.userData.type = 'red';
+        scene.add(redObject);
+        //objects.push(redObject);
+
+
+    }
+
+    // Modified moveToTarget with improved collision detection
+    function moveToTarget() {
+        
+        if (isGameOver || !isMoving || !targetPosition) return;
+
+        const direction = new THREE.Vector3();
+        direction.subVectors(targetPosition, player.position);
+        direction.y = 0;
+
+        if (direction.length() > 0.1) {
+            direction.normalize();
+            
+            // Calculate proposed new position
+            const proposedPosition = new THREE.Vector3(
+                player.position.x + direction.x * moveSpeed,
+                player.position.y,
+                player.position.z + direction.z * moveSpeed
+            );
+
+            // Check for wall collisions at proposed position
+            if (!checkCollision(proposedPosition)) {
+                // No collision, proceed with movement
+                player.position.x = proposedPosition.x;
+                player.position.z = proposedPosition.z;
+            } else {
+                // Collision detected, stop movement
+                isMoving = false;
+                targetPosition = null;
+                return;
+            }
+
+            // Check for pickable objects collisions
+            scene.children.forEach((object) => {
+                if (object.userData && (object.userData.type === 'red' || object.userData.type === 'green')) {
+                    const distance = player.position.distanceTo(object.position);
+                    
+                    if (distance < 1.5) {
+                        if (object.userData.type === 'green') {
+                          score += 10;
+                          createPickupEffect(object.position, 0x00ff00);
+                          inventory.green++;
+                          checkWinCondition();
+                          console.log("Picking");
+                          isMoving = false;
+                          targetPosition = null;
+                        } else if (object.userData.type === 'red') {
+                            inventory.red++;
+                            createPickupEffect(object.position, 0xff0000);
+                            if (inventory.red >= MAX_RED_PICKUPS) {
+                                gameOver();
+                            }
+                        }
+                        
+                        // Visual feedback
+                        const pickupText = document.createElement('div');
+                        pickupText.textContent = `+${object.userData.type === 'green' ? '10' : '0'}`;
+                        pickupText.style.position = 'fixed';
+                        pickupText.style.left = '50%';
+                        pickupText.style.top = '40%';
+                        pickupText.style.transform = 'translate(-50%, -50%)';
+                        pickupText.style.color = 'white';
+                        pickupText.style.fontSize = '32px';
+                        pickupText.style.fontWeight = 'bold';
+                        document.body.appendChild(pickupText);
+
+                        removeObject(object);
+                        updateScore();
+                        
+                        setTimeout(() => {
+                            document.body.removeChild(pickupText);
+                        }, 1000);
+                    }
+                }
+            });
+        } else {
+            // Reached target
+            isMoving = false;
+            targetPosition = null;
+        }
+        updateInventoryDisplay();
+    }
+
+    // Call initObjects in your setup
+    //initObjects();
+
+    // Create reusable pickup text element
+    const pickupText = document.createElement('div');
+    pickupText.className = 'pickup-text';
+    document.body.appendChild(pickupText);
+
+    function showPickupText(type, value) {
+        pickupText.textContent = `+${type === 'green' ? '10' : '0'}`;
+        pickupText.style.color = type;
+        pickupText.classList.remove('show');
+        
+        requestAnimationFrame(() => {
+            pickupText.classList.add('show');
+        });
+        
+        // Remove animation class after animation completes
+        pickupText.addEventListener('animationend', () => {
+            pickupText.classList.remove('show');
+        }, { once: true });
+    }
+
+    // Modified collision handler
+    function handleCollision(object) {
+        if (object.userData && !object.userData.collected) {
+            object.userData.collected = true;
+            object.visible = false;
+            showPickupText(object.userData.type);
+        }
+    }
+
+    // Add this helper function for proper cleanup
+    function removeObject(object) {
+        // Remove from tracking arrays based on object type
+        if (object.userData.type === 'green') {
+            const index = objects.indexOf(object);
+            if (index > -1) {
+                objects.splice(index, 1);
+            }
+        } else if (object.userData.type === 'red') {
+            const index = redObjects.indexOf(object);
+            if (index > -1) {
+                redObjects.splice(index, 1);
+            }
+        }
+
+        // Dispose of geometry
+        if (object.geometry) {
+            object.geometry.dispose();
+        }
+        
+        // Dispose of material
+        if (object.material) {
+            if (Array.isArray(object.material)) {
+                object.material.forEach(material => material.dispose());
+            } else {
+                object.material.dispose();
+            }
+        }
+        
+        // Remove from parent/scene
+        if (object.parent) {
+            object.parent.remove(object);
+        }
+        
+        // Clear any custom properties
+        object.userData = {};
+        
+        // Force position reset (prevent floating artifacts)
+        object.position.set(0, -1000, 0); // Move far away before cleanup
+    }
+
+    // Add this function to check the win condition
+    function checkWinCondition() {
+        if (inventory.green >= totalGreenObjects) {
+            document.getElementById('winMessage').style.display = 'block';
+        }
+    }
+
+    // Add this event listener for the play again button
+    document.getElementById('playAgainButton').addEventListener('click', () => {
+        location.reload();
+    });
+
+    const rulesBtn = document.getElementById("rulesBtn");
+    const rulesModal = document.getElementById("rulesModal");
+    const closeBtn = document.getElementById("closeBtn");
+
+    rulesBtn.onclick = function() {
+        rulesModal.style.display = "block";
+    }
+
+    closeBtn.onclick = function() {
+        rulesModal.style.display = "none";
+    }
+
+    window.onclick = function(event) {
+        if (event.target == rulesModal) {
+            rulesModal.style.display = "none";
+        }
+    }
+  </script>
+  
+</body>
+</html>
